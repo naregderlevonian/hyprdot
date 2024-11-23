@@ -47,10 +47,15 @@ back() {
 
     local shaders=($(ls "$SHADERS" | grep -v "current"))
 
+    if [ ${#shaders[@]} -eq 0 ]; then
+        echo "No shaders available."
+        exit 1
+    fi
+
     for i in "${!shaders[@]}"; do
         if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then
-            back_index=$(( (i - 1) % ${#shaders[@]} ))
-            back_shader=${shaders[$next_index]}
+            back_index=$(( (i - 1 + ${#shaders[@]}) % ${#shaders[@]} ))
+            back_shader=${shaders[$back_index]}
         fi
     done
 
@@ -58,7 +63,6 @@ back() {
     set_shader "$SHADERS/$back_shader"
 
     waynot send "Shader" "$back_shader"
-
 }
 
 next() {
@@ -66,6 +70,11 @@ next() {
     [ $? -eq 0 ] && { on; exit 0; }
 
     local shaders=($(ls "$SHADERS" | grep -v "current"))
+
+    if [ ${#shaders[@]} -eq 0 ]; then
+        echo "No shaders available."
+        exit 1
+    fi
 
     for i in "${!shaders[@]}"; do
         if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then

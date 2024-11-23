@@ -3,7 +3,7 @@ gpu.mode: hybrid
 hyprpaper.isEnabled: true
 hyprpaper.wallpaper: Sky
 
-shader.mode: matrix
+shader.mode: caramel-schubert
 
 interface.performance = true
 interface.scheme: van
