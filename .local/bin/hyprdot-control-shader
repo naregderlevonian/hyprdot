@@ -1,0 +1,119 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-shader get mode
+        hyprdot-control-shader set off|on|toggle
+        hyprdot-control-shader set back|next
+EOF
+}
+
+SHADERS="$HOME/.config/hypr/shaders/"
+
+get_current_shader() {
+    hyprdot-settings read "shader.mode"
+}
+
+set_shader() {
+    hyprctl keyword "decoration:screen_shader" "$1"
+}
+
+get_status() {
+    echo $(hyprctl getoption "decoration:screen_shader" | grep "set: true")
+}
+
+is_enabled() {
+    get_status | grep -q "true" && return 1 || return 0
+}
+
+off() {
+    waynot send "Shader" "Reset"
+    hyprctl reload
+}
+
+on() {
+    waynot send "Shader" "$(get_current_shader)"
+    set_shader "$SHADERS/$(get_current_shader)"
+}
+
+toggle() {
+    is_enabled
+    [ $? -eq 1 ] && off || on
+}
+
+back() {
+    is_enabled
+    [ $? -eq 0 ] && { on; exit 0; }
+
+    local shaders=($(ls "$SHADERS" | grep -v "current"))
+
+    for i in "${!shaders[@]}"; do
+        if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then
+            back_index=$(( (i - 1) % ${#shaders[@]} ))
+            back_shader=${shaders[$next_index]}
+        fi
+    done
+
+    hyprdot-settings assign "shader.mode" "$back_shader"
+    set_shader "$SHADERS/$back_shader"
+
+    waynot send "Shader" "$back_shader"
+
+}
+
+next() {
+    is_enabled
+    [ $? -eq 0 ] && { on; exit 0; }
+
+    local shaders=($(ls "$SHADERS" | grep -v "current"))
+
+    for i in "${!shaders[@]}"; do
+        if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then
+            next_index=$(( (i + 1) % ${#shaders[@]} ))
+            next_shader=${shaders[$next_index]}
+        fi
+    done
+
+    hyprdot-settings assign "shader.mode" "$next_shader"
+    set_shader "$SHADERS/$next_shader"
+
+    waynot send "Shader" "$next_shader"
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "mode")
+                echo $(get_current_shader)
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "off")
+                off
+                ;;
+            "on")
+                on
+                ;;
+            "toggle")
+                toggle
+                ;;
+            "back")
+                back
+                ;;
+            "next")
+                next
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

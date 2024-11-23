@@ -1,0 +1,75 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-settings read VALUE
+        hyprdot-settings create PROPERTY VALUE
+        hyprdot-settings assign PROPERTY VALUE
+        hyprdot-settings delete PROPERTY
+        hyprdot-settings show
+EOF
+    exit 1
+}
+
+CONFIG="$HOME/.config/hyprdot/session.conf"
+
+if [ ! -f "$CONFIG" ]; then
+    echo "Configuration file not exists"
+    exit 1
+fi
+
+read() {
+    grep "^$1: " "$CONFIG" | awk -F': ' '{print $2}' | xargs
+}
+
+create() {
+    local propery="$1"
+    local value="$2"
+
+    if grep -q "^$property:" "$CONFIG"; then
+        echo "Property '$property' already exists. Use 'set' to change its value."
+    else
+        echo "$property: $value" >> "$CONFIG"
+    fi
+}
+
+assign() {
+    local property="$1"
+    local value="$2"
+
+    if grep -q "^$property:" "$CONFIG"; then
+        sed -i.bak "s/^$property: .*/$property: $value/" "$CONFIG"
+    else
+        echo "$property: $value" >> "$CONFIG"
+    fi
+}
+
+delete() {
+    sed -i.bak "/^$1: /d" "$CONFIG"
+}
+
+
+show() {
+    grep -v '^[[:space:]]*$' "$CONFIG"
+}
+
+case "$1" in
+    "read")
+        read "$2"
+        ;;
+    "create")
+        create "$2" "$3"
+        ;;
+    "assign")
+        assign "$2" "$3"
+        ;;
+    "delete")
+        delete "$2"
+        ;;
+    "show")
+        show
+        ;;
+    *)
+        usage
+        ;;
+esac

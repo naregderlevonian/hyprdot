@@ -1,0 +1,144 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-paper update status
+        hyprdot-control-paper set on|off|toggle
+        hyprdot-control-paper set back|next
+EOF
+    exit 1
+}
+
+PROCESS="hyprpaper"
+WALLPAPER_PATH="$HOME/.config/hypr/papers"
+CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
+IS_ENABLED=$(hyprdot-settings read "hyprpaper.isEnabled")
+
+get_status() {
+    is_process_running "$PROCESS" && echo "on" || echo "off"
+}
+
+get_wallpaper() {
+    echo $CURRENT_WALLPAPER
+}
+
+set_opacity() {
+    hyprctl keyword "decoration:fullscreen_opacity" "$1"
+    hyprctl keyword "decoration:active_opacity" "$1"
+    hyprctl keyword "decoration:inactive_opacity" "$1"
+}
+
+set_blur() {
+    hyprctl keyword "decoration:blur:enabled" "$1"
+}
+
+is_process_running() {
+    pgrep "$1" > /dev/null 2>&1
+    return $?
+}
+
+init() {
+    [ "$IS_ENABLED" = "true" ] && on || off
+}
+
+on() {
+    hyprctl reload
+    $PROCESS &
+    hyprdot-settings assign "hyprpaper.isEnabled" "true"
+    waynot send "Paper" "${CURRENT_WALLPAPER^}"
+}
+
+off() {
+    set_opacity "1"
+    set_blur "false"
+    killall $PROCESS
+    hyprdot-settings assign "hyprpaper.isEnabled" "false"
+}
+
+toggle() {
+    is_process_running "$PROCESS" && off || on
+}
+
+back() {
+    local wallpapers=($(ls "$WALLPAPER_PATH" | grep -v "current"))
+    
+    for i in "${!wallpapers[@]}"; do
+        if [ "${wallpapers[$i]}" = "$CURRENT_WALLPAPER" ]; then
+            back_index=$(( (i + 1) % ${#wallpapers[@]} ))
+            back_wallpaper=${wallpapers[$next_index]}
+        fi
+    done
+
+    hyprdot-settings assign "hyprpaper.wallpaper" "$back_wallpaper"
+    CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
+
+    rm -r "$WALLPAPER_PATH/current"
+    ln -s "$WALLPAPER_PATH/$back_wallpaper" "$WALLPAPER_PATH/current"
+
+    off
+    on
+}
+
+next() {
+    local wallpapers=($(ls "$WALLPAPER_PATH" | grep -v "current"))
+    
+    for i in "${!wallpapers[@]}"; do
+        if [ "${wallpapers[$i]}" = "$CURRENT_WALLPAPER" ]; then
+            next_index=$(( (i + 1) % ${#wallpapers[@]} ))
+            next_wallpaper=${wallpapers[$next_index]}
+        fi
+    done
+
+    hyprdot-settings assign "hyprpaper.wallpaper" "$next_wallpaper"
+    CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
+
+    rm -r "$WALLPAPER_PATH/current"
+    ln -s "$WALLPAPER_PATH/$next_wallpaper" "$WALLPAPER_PATH/current"
+
+    off
+    on
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "status")
+                get_status
+                ;;
+            "wallpaper")
+                get_wallpaper
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "init")
+                init
+                ;;
+            "on")
+                on
+                ;;
+            "off")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            "back")
+                back
+                ;;
+            "next")
+                next
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

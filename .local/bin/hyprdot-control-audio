@@ -1,0 +1,159 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-audio speaker|microphone get name|samplerate|buffersize|latency|level
+        hyprdot-control-audio speaker|microphone set increase|decrease|up|down|on|off|toggle
+EOF
+    exit 1
+}
+
+TYPE="$1"
+MIC_LED="platform::micmute"
+DEVICE="@DEFAULT_AUDIO_SINK@"
+SPEAKER_SIGNAL_NO=2
+MICROPHONE_SIGNAL_NO=3
+
+refresh_waybar() {
+    local signal_no=$([ "$1" = "@DEFAULT_AUDIO_SOURCE@" ] && echo "$MICROPHONE_SIGNAL_NO" || echo "$SPEAKER_SIGNAL_NO")
+    pkill -SIGRTMIN+$signal_no waybar
+}
+
+extract_value() {
+    echo "$1" |  grep "$2" | awk -F ' = ' '{print $2}' | tr -d '"'
+}
+
+get_name() {
+    extract_value "$(wpctl inspect "$1")" "node.description"
+}
+
+get_samplerate() {
+    extract_value "$(wpctl inspect "$1")" "node.max-latency" | awk -F'/' '{print $2}'
+}
+
+get_buffersize() {
+    extract_value "$(wpctl inspect "$1")" "api.alsa.period-size"
+}
+
+get_latency() {
+    local info=$(wpctl inspect "$1")
+    local samplerate=$(extract_value "$info" "node.max-latency" | awk -F'/' '{print $2}')
+    local buffersize=$(extract_value "$info" "api.alsa.period-size")
+
+    if [ -z "$buffersize" ] || [ -z "$samplerate" ]; then 
+        echo "NaN"
+    else
+        echo "scale=5; $buffersize / $samplerate * 1000" | bc | awk -F'.' '{print $1}'
+    fi
+}
+
+get_level() {
+    local volume=$(wpctl get-volume "$1" | awk -F': ' '{print $2}')
+
+    if echo "$volume" | grep -qi "muted"; then
+        echo "Muted"
+    else
+        volume=$(echo "$volume * 100" | bc)
+        echo "${volume%%.*}"
+    fi
+}
+
+set_level() {
+    wpctl set-volume $@
+    waynot send ${TYPE^} "$(get_level $1)"
+    refresh_waybar
+}
+
+change() {
+    [ "$1" = "@DEFAULT_AUDIO_SOURCE@" ] && { hyprdot-control --brightness "$MIC_LED" set "$2"; }
+    wpctl set-mute "$1" toggle "$3"
+    waynot send ${TYPE^} "$(get_level $1)"
+    refresh_waybar
+}
+
+on() {
+    change "$1" "max" 1 
+}
+
+off() {
+    change "$1" "min" 0 
+}
+
+toggle() {  
+    [ "$(get_level "$1")" = "Muted" ] && on "$1" || off "$1"
+}
+
+case "$1" in
+    "speaker")
+        DEVICE="@DEFAULT_AUDIO_SINK@"
+        ;;
+    "microphone")
+        DEVICE="@DEFAULT_AUDIO_SOURCE@"
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+case "$2" in
+    "get")
+        case "$3" in
+            "name")
+                get_name "$DEVICE"
+                ;;
+            "samplerate")
+                get_samplerate "$DEVICE"
+                ;;
+            "buffersize")
+                get_buffersize "$DEVICE"
+                ;;
+            "latency")
+                get_latency "$DEVICE"
+                ;;
+            "level")
+                get_level "$DEVICE"
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$3" in
+            "increase")
+                set_level "$DEVICE" "5%+"
+                ;;
+            "decrease")
+                set_level "$DEVICE" "5%-"
+                ;;
+            "up")
+                set_level "$DEVICE" "1%+"
+                ;;
+            "down")
+                set_level "$DEVICE" "1%-"
+                ;;
+            "max")
+                set_level "$DEVICE" "100%"
+                ;;
+            "min")
+                set_level "$DEVICE" "0%"
+                ;;
+            "on")
+                on "$DEVICE" "max" 1
+                ;;
+            "off")
+                off "$DEVICE" "min" 0
+                ;;
+            "toggle")
+                toggle "$DEVICE"
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac
+

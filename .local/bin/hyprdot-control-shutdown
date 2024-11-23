@@ -1,0 +1,99 @@
+#!/bin/sh
+
+usage() {
+cat << EOF
+Usage:  hyprdot-control-shutdown lock|exit|suspend|reboot|poweroff
+        hyprdot-control-shutdown dialog
+EOF
+    exit 1
+}
+
+try() {
+    local command="$1"
+    local message="$2"
+
+    if zenity --question \
+        --icon="/usr/share/icons/empty.png" \
+        --title="Shutdown" \
+        --text="$message"; then
+        eval "$command"
+    fi
+}
+
+try_lock() {
+    hyprlock
+}
+
+try_exit() {
+    try "hyprctl dispatch exit" "Are you sure you want to exit?"
+}
+
+try_suspend() {
+    try "systemctl suspend" "Are you sure you want to sleep?" 
+}
+
+try_reboot() {
+    try "systemctl reboot" "Are you sure you want to restart system?" 
+}
+
+try_poweroff() {
+    try "systemctl poweroff" "Are you sure you want to shutdown?" 
+}
+
+dialog() {
+    choice=$(zenity --info \
+        --icon="/usr/share/icons/empty.png" \
+        --title "Shutdown" \
+        --text=" " \
+        --ok-label "Cancel" \
+        --extra-button "Poweroff" \
+        --extra-button "Reboot" \
+        --extra-button "Suspend" \
+        --extra-button "Logout" \
+        --extra-button "Lock" )
+
+    case $choice in
+        "Lock")  
+            hyprlock
+            ;;
+        "Logout")  
+            hyprctl dispatch exit
+            ;;
+        "Suspend")  
+            systemctl suspend
+            ;;
+        "Reboot")  
+            systemctl reboot
+            ;;
+        "Poweroff")  
+            systemctl poweroff
+            ;;
+        *) 
+            exit 1
+            ;;
+    esac
+}
+
+case "$1" in
+    "lock")
+        try_lock
+        ;;
+    "exit")
+        try_exit
+        ;;
+    "suspend")
+        try_suspend
+        ;;
+    "reboot")
+        try_reboot
+        ;;
+    "poweroff")
+        try_poweroff
+        ;;
+    "dialog")
+        dialog
+        ;;
+    *)
+        usage
+        ;;
+esac

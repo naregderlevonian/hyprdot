@@ -1,0 +1,96 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-bluetooth get powered|discoverable|scanning|pairable|devices
+        hyprdot-control-bluetooth set on|off|toggle
+EOF
+    exit 1
+}
+
+get_status() {
+    bluetoothctl show | grep "$1" | awk '{print $2}'
+}
+
+is_powered() {
+    [ "$(get_status "Powered")" = "yes" ] && echo 1 || echo 0
+}
+
+is_discoverable() {
+    [ "$(get_status "Discoverable")" = "yes" ] && echo 1 || echo 0
+}
+
+is_scanning() {
+    [ "$(get_status "Discovering:")" = "yes" ] && echo 1 || echo 0
+}
+
+is_pairable() {
+    [ "$(get_status "Pairable:")" = "yes" ] && echo 1 || echo 0
+}
+
+get_devices() {
+    bluetoothctl devices Connected | grep "Device" | awk '{print $3}' | sed 's/^ //; s/ $//'
+}
+
+assign() {
+    local mode="$1"
+    bluetoothctl power "$mode"
+    waynot send "Bluetooth" "Power $mode"
+}
+
+on() {
+    assign "on"
+}
+
+off() {
+    assign "off"
+}
+
+toggle() {
+    [ $(is_powered) -eq 1 ] && off || on
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "powered")
+                is_powered
+                ;;
+            "discoverable")
+                is_discoverable
+                ;;
+            "scanning")
+                is_scanning
+                ;;
+            "pairable")
+                is_pairable
+                ;;
+            "devices")
+                get_devices
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "on")
+                on
+                ;;
+            "off")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac
+

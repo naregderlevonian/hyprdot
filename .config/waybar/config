@@ -1,0 +1,251 @@
+[{
+    "output": ["eDP-2"],
+    "layer": "top",
+    "position": "top",
+    "spacing": 12,
+    "margin-top": 8,
+    "margin-bottom": 4,
+    "margin-left": 12,
+    "margin-right": 12,
+    "modules-left": [
+        "battery",
+        "clock",
+        "custom/weather"
+    ],
+    "modules-center": [
+        "hyprland/workspaces"
+    ],
+    "modules-right": [
+        "custom/waynot",
+        "custom/lock",
+        "custom/exit",
+        "custom/suspend",
+        "custom/reboot",
+        "custom/hibernate",
+        "custom/poweroff"
+    ],
+    "battery": {
+        "format": "",
+        "format-full": "",
+        "format-discharging": " {capacity}%",
+        "format-charging": "",
+        "interval": 1,
+        "states": {
+            "warning": 20,
+            "critical": 10,
+        },
+        "tootip": true,
+        "tooltip-format": "{capacity}%\n{time} left\n{power} W",
+    },
+    "clock": {
+        "format": "{:%H:%M:%S}",
+        "interval": 1,
+        "tooltip": true,
+        "tooltip-format": "{:%d %b %Y %a %T}",
+    },
+    "custom/weather": {
+        "exec": "hyprdot-control --waybar get weather",
+        "format": "{}",
+        "interval": 60,
+        "on-click": "hyprdot-control --waybar get weather",
+        "return-type": "json",
+    },
+    "hyprland/workspaces": {
+        "all-outputs": false,
+        "format": "{icon}",
+        "format-icons": {
+            "active": "•",
+            "default": "•",
+            "persistent": "•"
+        },
+        "on-scroll-up": "hyprdot-control --workspace set back",
+        "on-scroll-down": "hyprdot-control --workspace set next",
+        "smooth-scrolling-threshold": 3,
+    },
+    "custom/waynot": {
+        "exec": "waynot post",
+        "format": "{}",
+        "return-type": "json",
+        "signal": 1,
+    },
+    "custom/lock": {
+        "format": "",
+        "on-click": "hyprdot-control --shutdown lock",
+        "tooltip-format": "Lock",
+    },
+    "custom/exit": {
+        "format": "",
+        "on-click": "hyprdot-control --shutdown exit",
+        "tooltip-format": "Exit",
+    },
+    "custom/suspend": {
+        "format": "",
+        "on-click": "hyprdot-control --shutdown suspend",
+        "tooltip-format": "Suspend",
+    },
+    "custom/reboot": {
+        "format": "",
+        "on-click": "hyprdot-control --shutdown reboot",
+        "tooltip-format": "Reboot",
+    },
+    "custom/poweroff": {
+        "format": "", 
+        "on-click": "hyprdot-control --shutdown poweroff",
+        "tooltip-format": "Power Off",
+    },
+},
+{
+    "output": ["DP-1"],
+    "layer": "top",
+    "position": "bottom",
+    "spacing": 12,
+    "margin-top": 4,
+    "margin-bottom": 8,
+    "margin-left": 12,
+    "margin-right": 12,
+    "modules-left": [
+        "memory",
+        "cpu",
+        "temperature",
+        "custom/gputemperature",
+    ],
+    "modules-center": [
+        "hyprland/workspaces"
+    ],
+    "modules-right": [
+        "custom/gpu",
+        "custom/idle",
+        "custom/fan",
+        "custom/performance",
+        "custom/microphone",
+        "custom/speaker",
+        "custom/bluetooth",
+        "custom/wifi"
+    ],
+    "memory": {
+        "format": "",
+        "interval": 1,
+        "states": {
+            "warning": 72,
+            "critical": 88
+        },
+        "tooltip": true,
+    },
+    "cpu": {
+        "format": "",
+        "interval": 1,
+        "states": {
+            "warning": 72,
+            "critical": 88
+        },
+        "tooltip": true,
+    },
+    "temperature": {
+        "critical-threshold": 80,
+        "format": "",
+        "interval": 1,
+        "tooltip": true,
+        "tootip-format": "CPU {}C°"
+    },
+    "custom/gputemperature": {
+        "exec": "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader",
+        "format": "",
+        "interval": 1,  
+        "tooltip": true,
+        "tooltip-format": "Nvidia GPU {}°C"
+    },
+    "custom/gputemperature": {
+        "exec": "nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader",
+        "format": "",
+        "interval": 1,  
+        "tooltip": true,
+        "tooltip-format": "Nvidia GPU {}°C"
+    },
+    "hyprland/workspaces": {
+        "all-outputs": false,
+        "format": "{icon}",
+        "format-icons": {
+            "active": "•",
+            "default": "•",
+            "persistent": "•"
+        },
+        "on-scroll-up": "hyprdot-control --workspace set back",
+        "on-scroll-down": "hyprdot-control --workspace set next",
+        "smooth-scrolling-threshold": 3,
+    },
+    "custom/gpu": {
+        "exec": "hyprdot-control --waybar get gpu",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "kitty --hold -e hyprdot-control --gpu set toggle",
+        "return-type": "json",
+        "tooltip": true,
+    },
+    "custom/idle": {
+        "exec": "hyprdot-control --waybar get idle",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --idle set toggle",
+        "return-type": "json",
+        "tooltip": true,
+    },
+    "custom/fan": {
+        "exec": "hyprdot-control --waybar get fan",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --fan set toggle",
+        "return-type": "json",
+        "signal": 5,
+        "tooltip": true,
+    },
+    "custom/performance": {
+        "exec": "hyprdot-control --waybar get performance",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --performance set next",
+        "on-click-right": "hyprdot-control --performance set back",
+        "return-type": "json",
+        "signal": 4,
+        "tooltip": true,
+    },
+    "custom/microphone": {
+        "exec": "hyprdot-control --waybar get microphone",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --audio microphone set toggle",
+        "on-click-right": "qpwgraph",
+        "on-scroll-down": "hyprdot-control --audio microphone set up",
+        "on-scroll-up": "hyprdot-control --audio microphone set down",
+        "return-type": "json",
+        "signal": 2,
+        "tooltip": true,
+    },
+    "custom/speaker": {
+        "exec": "hyprdot-control --waybar get speaker",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --audio speaker set toggle",
+        "on-click-right": "pavucontrol",
+        "on-scroll-down": "hyprdot-control --audio speaker set up",
+        "on-scroll-up": "hyprdot-control --audio speaker set down",
+        "return-type": "json",
+        "signal": 1,
+        "tooltip": true,
+    },
+    "custom/bluetooth": {
+        "exec": "hyprdot-control --waybar get bluetooth",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --bluetooth set toggle",
+        "return-type": "json",
+        "tooltip": true,
+    },
+    "custom/wifi": {
+        "exec": "hyprdot-control --waybar get wifi",
+        "format": "{}",
+        "interval": 1,
+        "on-click": "hyprdot-control --wifi set toggle",
+        "return-type": "json",
+        "tooltip": true,
+    }
+}]

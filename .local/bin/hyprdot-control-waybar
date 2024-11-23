@@ -1,0 +1,454 @@
+#!/bin/sh
+
+MESSAGE_PATH="/tmp/alert"
+
+SIGNAL_NO=1
+
+PROCESS="waybar"
+
+refresh_waybar() {
+    pkill -SIGRTMIN+$SIGNAL_NO waybar
+}
+
+is_process_running() {
+    pgrep "$1" > /dev/null 2>&1
+    return $?
+}
+
+classify_temperature() {
+    local temperature="$1"
+    local class=""
+
+    declare -A temperature_classes=(
+        ["extreme-cold"]="-99.9 -18.1"
+        ["very-cold"]="-18.0 -10.1"
+        ["cold"]="-10.0 -0.1"
+        ["cool"]="0.1 9.9"
+        ["mildly-cool"]="10.0 15.9"
+        ["mild"]="16.0 20.9"
+        ["warm"]="21.0 26.9"
+        ["warm-hot"]="27.0 31.9"
+        ["hot"]="32.0 37.9"
+        ["extreme-hot"]="38.0 99.9"
+    )
+
+    temperature=$(echo "$temperature" | sed 's/°C//g')
+
+    for class_candidate in "${!temperature_classes[@]}"; do
+        read lower_bound upper_bound <<< "${temperature_classes[$class_candidate]}"
+        
+        if (( $(echo "$temperature >= $lower_bound" | bc -l) )) && (( $(echo "$temperature <= $upper_bound" | bc -l) )); then
+            class="$class_candidate"
+            break
+        fi
+    done
+
+    class="${class:-zero}"
+    echo "$class"
+}
+
+get_weather() {
+    local class
+    local text
+    local tooltip
+
+    local country=$(hyprdot-control-weather get country)
+    local name=$(hyprdot-control-weather get location)
+    local temperature=$(hyprdot-control-weather get temperature)
+    local windspeed=$(hyprdot-control-weather get windspeed)
+    local winddirection=$(hyprdot-control-weather get winddirection)
+    local pressure=$(hyprdot-control-weather get pressure)
+    local humidity=$(hyprdot-control-weather get humidity)
+
+    class=$(classify_temperature "$(echo $temperature | sed 's/°C//g')")
+
+    text="$temperature"
+    tooltip="$country/$name\r$temperature\rWind: $windspeed, $winddirection\rPressure: $pressure\rHumidity: $humidity"
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_gpu() {
+    local class
+    local text
+    local tooltip
+
+    local status=$(hyprdot-control --gpu get mode)
+
+    text=""
+
+    case $status in
+        "hybrid")
+            class="hybrid"
+            tooltip="Hybrid GPU Mode"
+            ;;
+        "intel")
+            class="intel"
+            tooltip="Only Intel GPU"
+            ;;
+    esac
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_idle() {
+    local class
+    local text
+    local tooltip
+
+    local status=$(hyprdot-control --idle get status)
+
+    text=""
+
+    if [ "$status" -eq 1 ]; then
+        class="on"
+        tooltip="Idle Enabled"
+    else
+        class="off"
+        tooltip="Idle Disabled"
+    fi
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_fan() {
+    local class
+    local text
+    local tooltip
+
+    local status=$(hyprdot-control --fan get status)
+
+    text=""
+
+    case $status in
+        "Auto")
+            class="auto"
+            tooltip="Fan Auto"
+            ;;
+        "Maximum")
+            class="maximum"
+            tooltip="Fan Maximum Speed"
+            ;;
+    esac
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_performance() {
+    local class
+    local text
+    local tooltip
+
+    local mode=$(hyprdot-control --performance get mode)
+
+    case $mode in
+        "Performance")
+            class="performance"
+            text=" "
+            tooltip="Performance"
+            ;;
+        "Balance Performance")
+            class="balance-performance"
+            text=" "
+            tooltip="Balance Performance"
+            ;;
+        "Balance Power")
+            class="balance-power"
+            text=" "
+            tooltip="Balance Power"
+            ;;
+        "Power")
+            class="power"
+            text=" "
+            tooltip="Power"
+            ;;
+    esac
+
+    tooltip+=" Mode"
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_microphone() {
+    local class
+    local text
+    local tooltip
+
+    local device
+    local volume
+    local sample_rate
+    local buffer_size
+    local latency
+
+    device="$(hyprdot-control --audio microphone get name)"
+
+    if [ "$device" = "Dummy Output" ]; then
+        device="Not Exist"
+        text=""
+        class="off"
+        tooltip="$device"
+    else
+        volume="$(hyprdot-control --audio microphone get level)"
+        case "$volume" in
+            "Muted")
+                volume="Muted"
+                text=""
+                class="muted"
+                ;;
+            0)
+                volume="$volume%"
+                text=""
+                class="zero"
+                ;;
+            [1-9]|[1][0-9])
+                volume="$volume%"
+                text=""
+                class="low"
+                ;;
+            [2-7][0-9]) 
+                volume="$volume%"
+                text=""
+                class="medium"
+                ;;
+            [8-9][0-9]|100) 
+                volume="$volume%"
+                text=""
+                class="high"
+                ;;
+            *)
+                volume="$volume%"
+                text=""
+                class="critical"
+                ;;
+        esac
+
+        sample_rate="$(hyprdot-control --audio microphone get samplerate)Hz"
+        buffer_size="$(hyprdot-control --audio microphone get buffersize)"
+        latency="$(hyprdot-control --audio microphone get latency)ms"
+
+        tooltip="$device, $volume\r$sample_rate $buffer_size $latency"
+    fi
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_speaker() {
+    local class
+    local text
+    local tooltip
+
+    local device
+    local volume
+    local sample_rate
+    local buffer_size
+    local latency
+
+    device="$(hyprdot-control --audio speaker get name)"
+
+    if [ "$device" = "Dummy Output" ]; then
+        device="Not Exist"
+        text=""
+        class="off"
+        tooltip="$device"
+    else
+        volume=$(hyprdot-control --audio speaker get level)
+        case "$volume" in
+            "Muted")
+                text=""
+                class="muted"
+                ;;
+            0)
+                volume="$volume%"
+                text=""
+                class="zero"
+                ;;
+            [1-9]|[1][0-9])
+                volume="$volume%"
+                text=""
+                class="low"
+                ;;
+            [2-7][0-9]) 
+                volume="$volume%"
+                text=""
+                class="medium"
+                ;;
+            [8-9][0-9]|100) 
+                volume="$volume%"
+                text=""
+                class="high"
+                ;;
+            *)
+                volume="$volume%"
+                text=""
+                class="critical"
+                ;;
+        esac
+
+        sample_rate="$(hyprdot-control --audio speaker get samplerate)Hz"
+        buffer_size="$(hyprdot-control --audio speaker get buffersize)"
+        latency="$(hyprdot-control --audio speaker get latency)ms"
+
+        tooltip="$device, $volume\r$sample_rate $buffer_size $latency"
+    fi
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+get_bluetooth() {
+    local class
+    local text
+    local tooltip
+
+    local powered=$(hyprdot-control --bluetooth get powered)
+    local discoverable=$(hyprdot-control --bluetooth get discoverable)
+    local scan=$(hyprdot-control --bluetooth get scan)
+    local pairable=$(hyprdot-control --bluetooth get pairable)
+    local devices=$(hyprdot-control --bluetooth get devices)
+
+    local paired=$(echo "$devices" | jq -R -s -c 'split("\n") | map(select(length > 0))' | jq -r '. | join("\\r")')
+
+    text=""
+
+    if [ "$powered" -eq 1 ]; then
+        class="on"
+        
+        tooltip="Bluetooth On"
+        [ "$discoverable" -eq 1 ] && { text=""; class+="-discoverable"; tooltip+="\rDiscoverable"; }
+        [ "$scan" -eq 1 ] && { class+="-scan"; tooltip+="\rScan..."; }
+
+        [ -n "$paired" ] && { class+="-paired"; tooltip+="\rPaired with:\r$paired"; } || { tooltip+="\rNot paired"; }
+
+    else
+        class="off"
+        tooltip="Bluetooth Off"
+    fi
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+
+}
+
+get_wifi() {
+    local class
+    local text
+    local tooltip
+
+    local powered=$(hyprdot-control --wifi get powered)
+    local connected=$(hyprdot-control --wifi get connected)
+    local network=$(hyprdot-control --wifi get network)
+    local rssi=$(hyprdot-control --wifi get rssi)
+    local tx=$(hyprdot-control --wifi get tx)
+    local rx=$(hyprdot-control --wifi get rx)
+    local ip4=$(hyprdot-control --wifi get ip4)
+
+    text=""
+
+    if [ "$powered" -eq 1 ]; then
+        tooltip="WiFi On"
+
+        if [ "$connected" -eq 1 ]; then
+            class+="on-connected"
+            tooltip+="\r$network"
+            tooltip+="\r$ip4"
+            tooltip+="\r$rssi dBm"
+            tooltip+="\r↑ $tx Kbps"
+            tooltip+="\r↓ $rx Kbps"
+
+            case "$rssi" in
+                [0-9]|[1-6][0-9])
+                    ;;
+                [7][0-9])
+                    class+="-good"
+                    ;;
+                [8-9][0-9]) 
+                    class+="-fair"
+                    ;;
+                [1-9][0-9][0-9])
+                    class+="-poor"
+                    ;;
+                *)
+                    class+="-unknown"
+                    ;;
+            esac
+        else
+            class+="on-disconnected"
+            tooltip+="\rDisconnected"
+        fi
+    else
+        class="off"
+        tooltip="WiFi Off"
+    fi
+
+    printf '{"class":"%s","text":"%s","tooltip":"%s"}' "$class" "$text" "$tooltip"
+}
+
+clear_alert() {
+        sleep 2
+        printf '{"class":"","text":""}' > "$MESSAGE_PATH"
+        eval $SIGNAL
+}
+
+get_alert() {
+    [ -e "$MESSAGE_PATH" ] && { cat $MESSAGE_PATH; }
+}
+
+set_alert() {
+    local class="$1"
+    local caption="$2"
+    local notification="$3"
+
+    if is_process_running "waybar"; then
+        printf '{"class":"%s","text":"%s"}' "$class" "$caption. $notification" > "$MESSAGE_PATH"
+        eval $SIGNAL
+        clear_alert &
+    else
+        notify-send "$caption" "$notification"
+    fi
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "alert")
+                get_alert
+                ;;
+            "weather")
+                get_weather
+                ;;
+            "gpu")
+                get_gpu
+                ;;
+            "idle")
+                get_idle
+                ;;
+            "fan")
+                get_fan
+                ;;
+            "performance")
+                get_performance
+                ;;
+            "speaker")
+                get_speaker
+                ;;
+            "microphone")
+                get_microphone
+                ;;
+            "bluetooth")
+                get_bluetooth
+                ;;
+            "wifi")
+                get_wifi
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "alert")
+                set_alert "$3" "$4" "$5"
+                ;;
+            *)
+                ;;
+        esac
+        ;;
+    *)
+        ;;
+esac

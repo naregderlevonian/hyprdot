@@ -1,0 +1,84 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-scheme set {scheme}
+        hyprdot-control-scheme back|next
+EOF
+}
+
+CURRENT_SCHEME=$(hyprdot-settings read "interface.scheme")
+
+schemes=(
+    van
+    yerevan
+)
+
+paths=(
+"$HOME/.config/gtk-3.0"
+"$HOME/.config/hypr"
+"$HOME/.config/kitty"
+"$HOME/.config/mc/"
+"$HOME/.config/nvim/lua/config"
+)
+
+get_back() {
+    for i in "${!schemes[@]}"; do
+        if [ "${schemes[$i]}" = "$CURRENT_SCHEME" ]; then
+            back_index=$(( (i - 1) % ${#schemes[@]} ))
+            echo "${schemes[$back_index]}"
+            return
+        fi
+    done
+}
+
+get_next() {
+    for i in "${!schemes[@]}"; do
+        if [ "${schemes[$i]}" = "$CURRENT_SCHEME" ]; then
+            next_index=$(( (i + 1) % ${#schemes[@]} ))
+            echo "${schemes[$next_index]}"
+            return
+        fi
+    done
+}
+
+replace_shceme() {
+    for path in "${paths[@]}"; do
+        if [ -d "$path" ]; then
+            find "$path" -type f -exec sed -i "s/$1/$2/g" {} +
+        fi
+    done
+}
+
+set_scheme() {
+    hyprdot-settings assign "interface.scheme" "$1"
+    replace_shceme "$CURRENT_SCHEME" "$1"
+    waynot send "Scheme" "$1"
+}
+
+back() {
+    next_scheme=$(get_next)
+    set_scheme "$next_scheme"
+}
+
+next() {
+    next_scheme=$(get_next)
+    set_scheme "$next_scheme"
+}
+
+case "$1" in
+    "set")
+        [ -z "$2" ] && usage
+        set_scheme "$2"
+        ;;
+    "back")
+        back
+        ;;
+    "next")
+        next
+        ;;
+    *)
+        usage
+        ;;
+esac
+

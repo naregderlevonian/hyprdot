@@ -1,0 +1,114 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage: hyprdot-control-wifi get powered|connected|tx|rx|ip4
+       hyprdot-control-wifi set on|off|toggle
+EOF
+    exit 1
+}
+
+DEVICE="wlan0"
+
+get_powered() {
+    local state=$(iwctl device "$DEVICE" show | grep "Powered" | awk '{print $4}')
+    [ "$state" = "on" ] && echo 1 || echo 0
+}
+
+get_connected() {
+    local state=$(iwctl station "$DEVICE" show | grep "State" | awk '{print $2}')
+    [ "$state" = "connected" ] && echo 1 || echo 0
+}
+
+get_network() {
+    iwctl station "$DEVICE" show | grep "Connected network" | awk '{print $3}'
+}
+
+get_rssi() {
+    iwctl station "$DEVICE" show | grep "AverageRSSI" | awk '{print $2}' | tr -d '-'
+}
+
+get_stat() {
+    ifstat | grep "$DEVICE"
+}
+
+get_tx() {
+    get_stat | awk '{print $6}' 
+}
+
+get_rx() {
+    get_stat | awk '{print $8}'
+
+}
+
+get_ip4() {
+    iwctl station "$DEVICE" show | grep "IPv4" | awk '{print $3}'
+}
+
+assign() {
+    local state="$1"
+    iwctl device "$DEVICE" set-property Powered "$state"
+    waynot send "WiFi" "${state^}"
+}
+
+on() {
+    assign "on"
+}
+
+off() {
+    assign "off"
+}
+
+toggle() {
+    [ "$(get_powered)" -eq 0 ] && assign "on" || assign "off"
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "powered")
+                get_powered
+                ;;
+            "connected")
+                get_connected
+                ;;
+            "network")
+                get_network
+                ;;
+            "rssi")
+                get_rssi
+                ;;
+            "tx")
+                get_tx
+                ;;
+            "rx")
+                get_rx
+                ;;
+            "ip4")
+                get_ip4
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "on")
+                on
+                ;;
+            "off")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

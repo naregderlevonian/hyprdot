@@ -1,0 +1,66 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-idle set status
+        hyprdot-control-idle get [on|off|toggle]
+EOF
+    exit 1
+}
+
+PROCESS="hypridle"
+
+is_process_running() {
+    pgrep "$1" > /dev/null 2>&1
+    return $?
+}
+
+get_status() {
+    is_process_running "$PROCESS" && echo 1 || echo 0
+}
+
+on() {
+    "$PROCESS" &
+    waynot send "Idle" "Enabled"
+}
+
+off() {
+    killall "$PROCESS"
+    waynot send "Idle" "Disabled"
+}
+
+toggle() {
+    is_process_running "$PROCESS" && off || on
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "status")
+                get_status
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "on")
+                on
+                ;;
+            "off")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

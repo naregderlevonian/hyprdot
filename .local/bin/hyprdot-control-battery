@@ -1,0 +1,42 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-battery get level|status|left
+EOF
+    exit 1
+}
+
+get_level() {
+    echo $(acpi -b | awk -F", " '{print $2}' | tr -d "%")
+}
+
+get_status() {
+    echo $(acpi -b | awk -F", " '{print $1}' | awk -F": " '{print $2}')
+}
+
+get_left() {
+    echo $(acpi -b | awk -F", " '{print $3}')
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "level")
+                get_level
+                ;;
+            "status")
+                get_status
+                ;;
+            "left")
+                get_left
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

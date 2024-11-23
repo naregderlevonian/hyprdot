@@ -1,0 +1,52 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage: hyprdot-control-workspace set [back|next|home|last]
+EOF
+    exit 1
+}
+
+WORKSPACES=$(hyprctl workspaces -j)
+CLIENT=$(hyprctl activewindow -j)
+
+CLIENT_WORKSPACE=$(echo "$CLIENT" | jq ".workspace.id")
+CLIENT_MONITOR=$(echo "$CLIENT" | jq ".monitor")
+
+HOME_WORKSPACE=$(echo "$WORKSPACES" | jq --arg monitorID "$CLIENT_MONITOR" 'map(select(.monitorID | tostring == $monitorID)) | min_by(.id) | .id')
+LAST_WORKSPACE=$(echo "$WORKSPACES" | jq --arg monitorID "$CLIENT_MONITOR" 'map(select(.monitorID | tostring == $monitorID)) | max_by(.id) | .id')
+
+CLIENT_COUNT=$(echo "$WORKSPACES" | jq --argjson monitorID "$CLIENT_MONITOR" --argjson id "$CLIENT_WORKSPACE" '.[] | select(.monitorID == $monitorID and .id == $id) | .windows')
+
+dispatch_workspace() {
+    hyprctl dispatch workspace "$1"
+}
+
+case "$1" in
+    "set")
+        case "$2" in
+            "back")
+                dispatch_workspace $([ "$CLIENT_WORKSPACE" = "$HOME_WORKSPACE" ] && echo "r-1" || echo "m-1")
+                ;;
+            "next")
+                [ -z "$CLIENT_COUNT" ] && exit 1
+                dispatch_workspace $([ "$CLIENT_WORKSPACE" = "$LAST_WORKSPACE" ] && echo "r+1" || echo "m+1")
+                ;;
+            "home")
+                dispatch_workspace r~1
+                ;;
+            "last")
+                if [ "$CLIENT_WORKSPACE" != "$LAST_WORKSPACE" ]; then
+                    dispatch_workspace r~"$LAST_WORKSPACE"
+                fi
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac
+

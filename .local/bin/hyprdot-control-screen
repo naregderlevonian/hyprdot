@@ -1,0 +1,45 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-screen set scale|reset
+EOF
+    exit 1
+}
+
+SCREENPAD_IS_ENABLED=$(hyprdot-settings read "screenpad.isEnabled")
+SCREENPAD_SCALED_SETUP=$(hyprdot-settings read "screenpad.enabledSetup.scaled")
+SCREENPAD_SETUP=$(hyprdot-settings read "screenpad.enabledSetup")
+
+SCREEN_IS_ENABLED=$(hyprdot-settings read "screen.isEnabled")
+SCREEN_SCALED_SETUP=$(hyprdot-settings read "screen.enabledSetup.scaled")
+SCREEN_SETUP=$(hyprdot-settings read "screen.enabledSetup")
+
+setup() {
+    hyprctl keyword monitor "$1"
+}
+
+reset() {
+    hyprctl reload
+}
+
+scale() {
+    setup "$SCREEN_SCALED_SETUP"
+    setup "$SCREENPAD_SCALED_SETUP"
+}
+
+case "$1" in
+    "set")
+        case "$2" in
+            "scale")
+                scale
+                ;;
+            "reset")
+                reset
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

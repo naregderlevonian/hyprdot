@@ -1,0 +1,47 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-movewindow set left|right|up|down
+EOF
+    exit 1
+}
+
+move_window() {
+    local direction="$1"
+    local output="$(hyprctl dispatch movewindow "$direction" 2>&1)"
+
+    if echo "$output" | grep -q "Nowhere to move"; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+case "$1" in
+    "set")
+        case "$2" in
+            "left")
+                move_window "l"
+                [ $? -ne 0 ] && hyprdot-control-movetoworkspace set back
+                ;;
+            "right")
+                move_window "r"
+                [ $? -ne 0 ] && hyprdot-control-movetoworkspace set next
+                ;;
+            "up")
+                move_window "u"
+                ;;
+            "down")
+                move_window "d"
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac
+

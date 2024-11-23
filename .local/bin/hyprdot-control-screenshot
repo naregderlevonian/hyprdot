@@ -1,0 +1,34 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage: hyprdot-control-screenshoti workspace/area/windows [file]
+EOF
+    exit 1
+}
+
+DESTINATION="$HOME/Pictures/Screenshots/$(date +'%s.png')"
+SAVE_TO="$2"
+
+case "$1" in
+    "workspace")
+        PARAMETER="-o $(hyprctl activeworkspace -j | jq -r '.monitor' | tr -d ' ')"
+        ;;
+    "area")
+        PARAMETER="-g $(slurp -w 0)"
+        ;;
+    "window")
+        PARAMETER="-g $(hyprctl activewindow -j | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"')"
+        ;;
+    *)
+        PARAMETER=""
+        ;;
+esac
+
+if [ "$SAVE_TO" = "file" ]; then
+    grim $PARAMETER "$DESTINATION"
+else
+    grim $PARAMETER - | wl-copy
+fi
+
+waynot send "Screenshot" "${1^}"

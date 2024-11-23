@@ -1,0 +1,148 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-brightness all|default|{device} get level 
+        hyprdot-control-brightness all|default|{device} set increase|decrease|up|down|max|min [backup]
+        hyprdot-control-brightness all|default|{device} set resume
+EOF
+    exit 1
+}
+
+readarray -t DEVICES <<< $(brightnessctl --list | grep 'Device' | awk -F"'" '{print $2}')
+
+get_brightness() {
+    local device="$1"
+    if [ -z "$device" ]; then
+        for current in "${DEVICES[@]}"; do
+            hyprdot-settings read "brightness.$current"
+        done
+    else
+        hyprdot-settings read "brightness.$device"
+    fi
+}
+
+set_brightness() {
+    local device="$1"
+    local value="$2"
+    local backup="$3"
+
+    [ $backup -eq 1 ] && save_brightness "$device"
+
+    if [ -z "$device" ]; then
+        for current in "${DEVICES[@]}"; do
+            brightnessctl --device="$current" set "$value"
+        done
+    else
+        brightnessctl --device="$device" set "$value"
+    fi
+}
+
+save_brightness() {
+    local device="$1"
+    if [ -z "$device" ]; then
+        for current in "${DEVICES[@]}"; do
+            hyprdot-settings assign "brightness.$current" $(brightnessctl --device="$current" get)
+        done
+    else
+        hyprdot-settings assign "brightness.$device" $(brightnessctl --device="$device" get)
+    fi
+}
+
+load_brightness() {
+    local device="$1"
+    if [ -z "$device" ]; then
+        for current in "${DEVICES[@]}"; do
+            brightnessctl --device="$current" set $(hyprdot-settings read "brightness.$current")
+        done
+    else
+        brightnessctl --device="$device" set $(hyprdot-settings read "brightness.$device")
+    fi
+}
+
+request_device() {
+    local device="$1"
+    local device_found=0
+
+    [ -z "$device" ] && usage
+
+    for current in "${DEVICES[@]}"; do
+        [ "$current" = "$1" ] && device_found=1
+    done
+
+    [ "$device_found" -eq 0 ] && {
+        echo "Device '$device' not exist in list";
+        usage;
+        exit 1;
+    } 
+}
+
+case "$1" in
+    "all")
+        DEVICE=""
+        ;;
+    "default")
+        DEVICE=${DEVICES[0]}
+        ;;
+    *)
+        request_device "$1"
+        DEVICE="$1"
+esac
+
+case "$4" in
+    "backup")
+        BACKUP=1
+        ;;
+    *)
+        BACKUP=0
+        ;;
+esac
+
+case "$2" in
+    "get")
+        case "$3" in
+            "level")
+                get_brightness "$DEVICE"
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$3" in
+            "increase")
+                set_brightness "$DEVICE" "+5%"  "$BACKUP"
+                ;;
+            "decrease")
+                set_brightness "$DEVICE" "5%-"  "$BACKUP"
+                ;;
+            "up")
+                set_brightness "$DEVICE" "+1%"  "$BACKUP"
+                ;;
+            "down")
+                set_brightness "$DEVICE" "1%-"  "$BACKUP"
+                ;;
+            "max")
+                set_brightness "$DEVICE" "100%" "$BACKUP"
+                ;;
+            "min")
+                set_brightness "$DEVICE" "5%"   "$BACKUP"
+                ;;
+            "off")
+                set_brightness "$DEVICE" "0%"   "$BACKUP"
+                ;;
+            "resume")
+                load_brightness "$DEVICE"
+                ;;
+            *)
+                usage
+                ;;
+        esac
+
+        ;;
+    *)
+        usage
+        ;;
+esac
+

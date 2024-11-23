@@ -1,0 +1,301 @@
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Ubuntu Mono";
+    font-size: 12px;
+    min-height: 0;
+}
+
+window#waybar.top {
+    color: #ffffff;
+    background: transparent;
+}
+
+window#waybar.bottom {
+    color: #ffffff;
+    background: transparent;
+}
+
+tooltip {
+    background: rgba(0, 0, 0, 0.92);
+    border-radius: 4px;
+    padding: 64px;
+}
+
+tooltip label {
+    color: #ffffff;
+}
+
+#battery.discharging {
+    color: #eb7500;
+    padding: 0px;
+}
+
+#battery.warning:not(.charging) {
+    color: #eb7500;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#battery.critical:not(.charging) {
+    color: #eb7500;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+.warning {
+    color: #eb7500;
+}
+
+.critical {
+    color: #e1756d;
+}
+
+#workspaces {
+    color: #ffffff;
+    background: transparent;
+}
+
+#workspaces button {
+    background: transparent;
+    margin: 0;
+    padding: 0;
+    color: #ffffff;
+    background: transparent;
+    opacity: 0.32;
+}
+
+#workspaces button:hover {
+    color: #ffffff;
+    background: transparent;
+}
+
+#workspaces button.active {
+    color: #ffffff;
+    background: transparent;
+    opacity: 1;
+}
+
+
+#custom-weather.extreme-cold {
+    color: #d22d7d;
+}
+
+#custom-weather.very-cold {
+    color: #c240c9;
+}
+
+#custom-weather.cold {
+    color: #2c5edd;
+}
+
+#custom-weather.cool {
+    color: #00a5b8;
+}
+
+#custom-weather.mildly-cool {
+    color: #009e84;
+}
+
+#custom-weather.mild {
+    color: #179227;
+}
+
+#custom-weather.warm {
+    color: #a3a800;
+}
+
+#custom-weather.warm-hot {
+    color: #ffb805;
+}
+
+#custom-weather.hot {
+    color: #eb7500;
+}
+
+#custom-weather.extreme-hot {
+    color: #e1756d;
+}
+
+#custom-weather.zero {
+    color: #ffffff;
+}
+
+#custom-waynot {
+    color: #ffffff;
+    animation-name: waynot;
+    animation-duration: 1000ms;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+@keyframes waynot {
+to {
+    color: #ffffff;
+    opacity: 0.16;
+}
+}
+
+#custom-poweroff {
+    color: #e1756d;
+}
+
+#custom-gpu.hybrid {
+    color: #ffffff;
+}
+
+#custom-gpu.intel {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-idle.on {
+    color: #ffffff;
+}
+
+#custom-idle.off {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-fan.auto {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-fan.maximum {
+    color: #ffffff;
+}
+
+#custom-performance.performance {
+    color: #e1756d;
+}
+
+#custom-performance.balance-performance {
+    color: #6891ec;
+}
+
+#custom-performance.balance-power {
+    color: #ffffff;
+}
+
+#custom-performance.power {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-speaker.off,
+#custom-microphone.off {
+    color: #4e0906;
+}
+
+#custom-speaker.muted,
+#custom-microphone.muted {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-speaker.zero,
+#custom-microphone.zero {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-speaker.low,
+#custom-microphone.low {
+    color: #eb7500;
+}
+
+#custom-speaker.medium,
+#custom-microphone.medium {
+    color: #ffb805;
+}
+
+#custom-speaker.high,
+#custom-microphone.high {
+    color: #6891ec;
+}
+
+#custom-speaker.critical,
+#custom-microphone.critical {
+    color: #891c17;
+}
+
+#custom-bluetooth.off {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-bluetooth.on,
+#custom-bluetooth.on-discoverable {
+    color: #ffffff;
+}
+
+#custom-bluetooth.on-paired,
+#custom-bluetooth.on-discoverable-paired {
+    color: #6bb26a;
+}
+
+#custom-bluetooth.on-scan-paired,
+#custom-bluetooth.on-discoverable-scan-paired {
+    color: #6bb26a;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-bluetooth.on-scan,
+#custom-bluetooth.on-discoverable-scan {
+    color: #ffffff;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-wifi.off {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-wifi.on-disconnected {
+    color: #ffffff;
+    opacity: 0.24;
+}
+
+#custom-wifi.on-connected {
+    color: #6891ec;
+}
+
+#custom-wifi.on-connected-good {
+    color: #ffb805;
+}
+
+#custom-wifi.on-connected-fair {
+    color: #eb7500;
+}
+
+#custom-wifi.on-connected-poor
+#custom-wifi.on-connected-unknown {
+    color: #891c17;
+}
+
+
+@keyframes blink {
+to {
+    color: #000000;
+}
+}
+
+

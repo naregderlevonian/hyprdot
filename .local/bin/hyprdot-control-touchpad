@@ -1,0 +1,66 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage: hyprdot-control-touchpad get status
+       hyprdot-control-touchpad set on|off|toggle
+EOF
+    exit 1
+}
+
+TOUCHPAD_ENABLED="touchpad_enabled"
+
+get_status() {
+    hyprdot-settings read "touchpad.isEnabled"
+}
+
+set_status() {
+    local state="$1"
+    hyprctl keyword "\$TOUCHPAD_ENABLED" "$state" -r
+    hyprdot-settings assign "touchpad.isEnabled" "$state"
+    waynot send "Touchpad" "${state^}"
+}
+
+on() {
+    set_status "true"
+}
+
+off() {
+    set_status "false"
+}
+
+toggle() {
+    set_status $([ "$(get_status)" = "true" ] && echo "false" || echo "true")
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "status")
+                get_status
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "on")
+                on
+                ;;
+            "off")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

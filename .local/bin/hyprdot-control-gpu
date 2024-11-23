@@ -1,0 +1,85 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-gpu set mode
+        hyprdot-control-gpu get intel|hybrid
+EOF
+    exit 1
+}
+
+CONFIG_FILES=(
+"$HOME/.config/hypr/hyprlock.conf"
+"$HOME/.config/hypr/hyprpaper.conf"
+"$HOME/.config/hypr/hyprland/monitors.conf"
+"$HOME/.config/hypr/hyprland/input/stylus.conf"
+"$HOME/.config/hypr/hyprland/input/touchscreen.conf"
+"$HOME/.config/waybar/config"
+"$HOME/.config/tofi/config"
+)
+
+update_files() {
+    local mode="$1"
+    local old="eDP-1"
+    local new="eDP-2"
+
+   if zenity --question --text="Are you sure you want to toggle GPU to $mode?"; then
+        hyprdot-settings assign "gpu.mode" "$mode"
+
+        if [ "$mode" = "intel" ]; then
+            old="eDP-2"
+            new="eDP-1"
+        fi
+
+        for file in "${CONFIG_FILES}"; do
+            sed -i "s/$old/$new/" "$file"
+        done
+
+        sudo mkinitcpio -P
+        systemctl reboot
+   fi
+}
+
+get_mode() {
+    echo $(hyprdot-settings read "gpu.mode")
+}
+
+set_mode() {
+    update_files "$1"
+}
+
+toggle() {
+    [ $(get_mode) = "intel" ] && set_gpumode "hybrid" || set_gpu "intel"
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "mode")
+                get_mode
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "intel")
+                set_mode "intel"                
+                ;;
+            "hybrid")
+                set_mode "hybrid"
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

@@ -1,0 +1,94 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-weather get country|location|temperature|windspeed|winddirection|pressure|humidity
+EOF
+    exit 1
+}
+
+WEATHER_PATH="/tmp/weather"
+
+if [ -e "$WEATHER_PATH" ]; then
+    INFO=$(cat "$WEATHER_PATH")
+else
+    CITY=$(wget -qO- ipinfo.io | jq -r ".city")
+    INFO=$(weather-Cli get -r $CITY)
+fi
+
+extract_weather() {
+    local property="$1"
+    echo $INFO | jq -r ".$property" | sed 's/null//g' | tr -d '\n'
+}
+
+get_country() {
+    local country=$(extract_weather "country")
+    echo "$country"
+}
+
+get_location() {
+    local location=$(extract_weather "name")
+    echo "$location"
+}
+
+get_temperature() {
+    local temperature=$(extract_weather "current_weather.temperature")
+    local temperature_unit=$(extract_weather "current_weather_units.temperature")
+    echo "$temperature$temperature_unit"
+}
+
+get_windspeed() {
+    local windspeed=$(extract_weather "current_weather.windspeed")
+    local windspeed_unit=$(extract_weather "current_weather_units.windspeed")
+    echo "$windspeed$windspeed_unit"
+}
+
+get_winddirection() {
+    local winddirection=$(extract_weather "current_weather.winddirection")
+    local winddirection_unit=$(extract_weather "current_weather_units.winddirection")
+    echo "$winddirection$winddirection_unit"
+}
+
+get_pressure() {
+    local pressure=$(extract_weather "hourly.pressure_msl")
+    local pressure_unit=$(extract_weather "hourly_units.pressure_msl")
+    echo "$pressure$pressure_unit"
+}
+
+get_humidity() {
+    local humidity=$(extract_weather "hourly.relativehumidity_2m")
+    local humidity_unit=$(extract_weather "hourly_units.relativehumidity_2m")
+    echo "$humidity$humidity_unit"
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "country")
+                get_country 
+                ;;
+            "location")
+                get_location 
+                ;;
+            "temperature")
+                get_temperature
+                ;;
+            "windspeed")
+                get_windspeed 
+                ;;
+            "winddirection")
+                get_winddirection 
+                ;;
+            "pressure")
+                get_pressure 
+                ;;
+            "humidity")
+                get_humidity 
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

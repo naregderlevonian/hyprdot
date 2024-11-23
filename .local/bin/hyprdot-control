@@ -1,0 +1,102 @@
+#!/bin/sh
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control --command [arguments...]
+
+Available:              --audio
+                        --battery
+                        --bluetooth
+                        --brightness
+                        --fan
+                        --gpu
+                        --idle
+                        --movetoworkspace
+                        --movewindow
+                        --paper
+                        --performance
+                        --scheme
+                        --screenpad
+                        --screenshot
+                        --shader
+                        --shutdown
+                        --touchpad
+                        --waybar
+                        --weather
+                        --wifi
+                        --workspace
+EOF
+    exit 1
+}
+
+case "$1" in
+    "--audio")
+        hyprdot-control-audio "$2" "$3" "$4"
+        ;;
+    "--battery")
+        hyprdot-control-battery "$2" "$3"
+        ;;
+    "--bluetooth")
+        hyprdot-control-bluetooth "$2" "$3"
+        ;;
+    "--brightness")
+        hyprdot-control-brightness "$2" "$3" "$4" "$5"
+        ;;
+    "--fan")
+        hyprdot-control-fan "$2" "$3"
+        ;;
+    "--gpu")
+        hyprdot-control-gpu "$2" "$3"
+        ;;
+    "--idle")
+        hyprdot-control-idle "$2" "$3"
+        ;;
+    "--movetoworkspace")
+        hyprdot-control-movetoworkspace "$2" "$3" "$4"
+        ;;
+    "--movewindow")
+        hyprdot-control-movewindow "$2" "$3"
+        ;;
+    "--paper")
+        hyprdot-control-paper "$2" "$3"
+        ;;
+    "--performance")
+        hyprdot-control-performance "$2" "$3"
+        ;;
+    "--scheme")
+        hyprdot-control-scheme "$2" "$3"
+        ;;
+    "--screen")
+        hyprdot-control-screenpad "$2" "$3"
+        ;;
+    "--screenpad")
+        hyprdot-control-screenpad "$2" "$3"
+        ;;
+    "--screenshot")
+        hyprdot-control-screenshot "$2" "$3"
+        ;;
+    "--shader")
+        hyprdot-control-shader "$2" "$3"
+        ;;
+    "--shutdown")
+        hyprdot-control-shutdown "$2"
+        ;;
+    "--touchpad")
+        hyprdot-control-touchpad "$2" "$3"
+        ;;
+    "--waybar")
+        hyprdot-control-waybar "$2" "$3" "$4" "$5" "$6"
+        ;;
+    "--weather")
+        hyprdot-control-weather "$2" "$3"
+        ;;
+    "--wifi")
+        hyprdot-control-wifi "$2" "$3"
+        ;;
+    "--workspace")
+        hyprdot-control-workspace "$2" "$3"
+        ;;
+    *)
+        usage
+        ;;
+esac

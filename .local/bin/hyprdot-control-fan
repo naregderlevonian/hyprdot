@@ -1,0 +1,86 @@
+#!/bin/bash
+
+usage() {
+    cat << EOF
+Usage:  hyprdot-control-fan get status
+        hyprdot-control-fan set off|on|toggle
+EOF
+}
+
+FAN_PATH="/sys/devices/platform/asus-nb-wmi/hwmon/hwmon*/"
+
+SIGNAL_NO=2
+
+refresh_waybar() {
+    pkill -SIGRTMIN+$SIGNAL_NO waybar
+}
+
+find_current_fan() {
+    for hwmon_dir in $FAN_PATH; do
+        if [ -f "${hwmon_dir}pwm1_enable" ]; then
+            echo "${hwmon_dir}pwm1_enable"
+            return
+        fi
+    done
+
+    echo "Fan control file not found." >&2
+    exit 1
+}
+
+get_status() {
+    [ "$FAN_STATUS" = "0" ] && { echo "Maximum"; } || { echo "Auto"; }
+}
+
+set_status() {
+    echo "$1" | sudo tee "$FAN" > /dev/null
+    FAN_STATUS="$1"
+    waynot send "Fan Speed" "$(get_status "$1")"
+    refresh_waybar
+}
+
+on() {
+    set_status 2
+}
+
+off() {
+    set_status 0
+}
+
+toggle() {
+    [ "$FAN_STATUS" -eq 0 ] && on || off
+}
+
+FAN=$(find_current_fan)
+FAN_STATUS=$(<"$FAN")
+
+case "$1" in
+    "get")
+        case "$2" in
+            "status")
+                get_status             
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "off")
+                on
+                ;;
+            "on")
+                off
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac

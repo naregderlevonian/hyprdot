@@ -1,0 +1,68 @@
+#!/bin/sh
+
+usage() {
+    cat <<EOF
+Usage:  hyprdot-control-screenpad get status
+        hyprdot-control-screenpad set on|off|toggle
+EOF
+}
+
+DISABLED_CONFIG_LINE=$(hyprdot-settings read "screenpad.disabledSetup")
+ENABLED_CONFIG_LINE=$(hyprdot-settings read "screenpad.enabledSetup")
+
+get_status() {
+    hyprdot-settings read "screenpad.isEnabled"
+}
+
+set_status() {
+    local setup="$1"
+    local state="$2"
+
+    hyprctl keyword monitor "$1"
+    hyprdot-settings assign "screenpad.isEnabled" "$2"
+    waynot send "Screenpad" "${2^}"
+}
+
+off() {
+    set_status "$DISABLED_CONFIG_LINE" "false"
+}
+
+on() {
+    set_status "$ENABLED_CONFIG_LINE" "true"
+}
+
+toggle() {
+    [ $(get_status) = "true" ] && off || on
+}
+
+case "$1" in
+    "get")
+        case "$2" in
+            "status")
+                get_status
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    "set")
+        case "$2" in
+            "off")
+                off              
+                ;;
+            "on")
+                on                
+                ;;
+            "toggle")
+                toggle
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+    *)
+        usage
+        ;;
+esac
