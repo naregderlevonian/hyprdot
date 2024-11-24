@@ -2,98 +2,140 @@
 
 usage() {
     cat << EOF
-Usage:  hyprdot-control-shader get mode
-        hyprdot-control-shader set off|on|toggle
-        hyprdot-control-shader set back|next
+Usage:  hyprdot-control-shader get status|mode
+        hyprdot-control-shader set status on|off|toggle [save] 
+        hyprdot-control-shader set mode back|next [save]
+        hyprdot-control-shader set shader {shader} [save]
+        hyprdot-control-shader set restore
 EOF
+    exit 1
 }
 
-SHADERS="$HOME/.config/hypr/shaders/"
+SHADERS_PATH="$HOME/.config/hypr/shaders"
+SHADERS=($(ls "$SHADERS_PATH" | grep -v "current" | sort))
 
-get_current_shader() {
-    hyprdot-settings read "shader.mode"
-}
-
-set_shader() {
-    hyprctl keyword "decoration:screen_shader" "$1"
-}
-
-get_status() {
-    echo $(hyprctl getoption "decoration:screen_shader" | grep "set: true")
+check_shader_exists() {
+    local shader="$1"
+    if [ ! -f "$SHADERS_PATH/$shader" ]; then
+        echo "Paper '$shader' not found."
+        exit 1
+    fi
 }
 
 is_enabled() {
-    get_status | grep -q "true" && return 1 || return 0
+    hyprctl getoption "decoration:screen_shader" | grep -q "set: true" && return 1 || return 0
 }
 
-off() {
-    waynot send "Shader" "Reset"
-    hyprctl reload
+restore() {
+    local status="$(load_status)"
+    local shader="$(load_mode)"
+
+    [ "$status" = "false" ] && {
+        off;
+        exit 0;
+    }
+
+    set_mode "$shader"
+}
+
+load_status() {
+    hyprdot-settings read "shader.isEnabled"
+}
+
+load_mode() {
+    hyprdot-settings read "shader.mode"
+}
+
+save_status() {
+    local status="$1"
+    hyprdot-settings assign "shader.isEnabled" "$status"
+}
+
+save_mode() {
+    local shader="$1"
+    hyprdot-settings assign "shader.mode" "$shader"
+}
+
+get_status() {
+    is_enabled
+    [ $? -eq 1 ] && echo "true" || echo "false"
+}
+
+get_mode() {
+    local path=$(hyprctl getoption "decoration:screen_shader" | grep "str: " | awk -F':' '{print $2}' | xargs)
+    echo "$(basename "$path")"
+}
+
+set_mode() {
+    local shader="$1"
+
+    check_shader_exists "$shader"
+
+    waynot send "Shader" "$shader"
+    hyprctl keyword "decoration:screen_shader" "$SHADERS_PATH/$shader"
+
+    [ "$SAVE" -eq 1 ] && {
+        save_status "true"
+        save_mode "$shader";
+    }
 }
 
 on() {
-    waynot send "Shader" "$(get_current_shader)"
-    set_shader "$SHADERS/$(get_current_shader)"
+    set_mode "$(load_mode)"
+}
+
+off() {
+    waynot send "Shader is off"
+    hyprctl reload
+
+    [ "$SAVE" -eq 1 ] && {
+        save_status "false"
+    }
 }
 
 toggle() {
     is_enabled
-    [ $? -eq 1 ] && off || on
+    [ $? -eq 1 ]  && off || on
+}
+
+navigate() {
+    local offset=$1
+
+    if [ ${#SHADERS[@]} -eq 0 ]; then
+        echo "No shaders available."
+        exit 1
+    fi
+
+    for i in "${!SHADERS[@]}"; do
+        if [ "${SHADERS[$i]}" = "$(get_mode)" ]; then
+            local new_index=$(( (i + offset + ${#SHADERS[@]}) % ${#SHADERS[@]} ))
+            set_mode "${SHADERS[$new_index]}"
+            return
+        fi
+    done
 }
 
 back() {
     is_enabled
-    [ $? -eq 0 ] && { on; exit 0; }
-
-    local shaders=($(ls "$SHADERS" | grep -v "current"))
-
-    if [ ${#shaders[@]} -eq 0 ]; then
-        echo "No shaders available."
-        exit 1
-    fi
-
-    for i in "${!shaders[@]}"; do
-        if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then
-            back_index=$(( (i - 1 + ${#shaders[@]}) % ${#shaders[@]} ))
-            back_shader=${shaders[$back_index]}
-        fi
-    done
-
-    hyprdot-settings assign "shader.mode" "$back_shader"
-    set_shader "$SHADERS/$back_shader"
-
-    waynot send "Shader" "$back_shader"
+    [ $? -eq 1 ] && navigate "-1"
 }
 
 next() {
     is_enabled
-    [ $? -eq 0 ] && { on; exit 0; }
-
-    local shaders=($(ls "$SHADERS" | grep -v "current"))
-
-    if [ ${#shaders[@]} -eq 0 ]; then
-        echo "No shaders available."
-        exit 1
-    fi
-
-    for i in "${!shaders[@]}"; do
-        if [ "${shaders[$i]}" = "$(get_current_shader)" ]; then
-            next_index=$(( (i + 1) % ${#shaders[@]} ))
-            next_shader=${shaders[$next_index]}
-        fi
-    done
-
-    hyprdot-settings assign "shader.mode" "$next_shader"
-    set_shader "$SHADERS/$next_shader"
-
-    waynot send "Shader" "$next_shader"
+    [ $? -eq 1 ] && navigate "+1"
 }
+
+SAVE=0
+[ "$4" = "save" ] && SAVE=1
 
 case "$1" in
     "get")
         case "$2" in
+            "status")
+                get_status
+                ;;
             "mode")
-                echo $(get_current_shader)
+                get_mode
                 ;;
             *)
                 usage
@@ -102,22 +144,42 @@ case "$1" in
         ;;
     "set")
         case "$2" in
-            "off")
-                off
+            "status")
+                case "$3" in
+                    "on")
+                        on
+                        ;;
+                    "off")
+                        off
+                        ;;
+                    "toggle")
+                        toggle
+                        ;;
+                    *)      
+                        usage
+                        ;;
+                esac
                 ;;
-            "on")
-                on
+            "mode")
+                case "$3" in
+                    "back")
+                        back
+                        ;;
+                    "next")
+                        next
+                        ;;
+                    *)
+                        usage
+                        ;;
+                esac
                 ;;
-            "toggle")
-                toggle
+            "shader")
+                set_mode "$3"
                 ;;
-            "back")
-                back
+            "restore")
+                restore
                 ;;
-            "next")
-                next
-                ;;
-            *)
+            *)      
                 usage
                 ;;
         esac

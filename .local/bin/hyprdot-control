@@ -58,7 +58,7 @@ case "$1" in
         hyprdot-control-movewindow "$2" "$3"
         ;;
     "--paper")
-        hyprdot-control-paper "$2" "$3"
+        hyprdot-control-paper "$2" "$3" "$4" "$5"
         ;;
     "--performance")
         hyprdot-control-performance "$2" "$3"
@@ -76,7 +76,7 @@ case "$1" in
         hyprdot-control-screenshot "$2" "$3"
         ;;
     "--shader")
-        hyprdot-control-shader "$2" "$3"
+        hyprdot-control-shader "$2" "$3" "$4" "$5"
         ;;
     "--shutdown")
         hyprdot-control-shutdown "$2"

@@ -2,102 +2,144 @@
 
 usage() {
     cat << EOF
-Usage:  hyprdot-control-paper update status
-        hyprdot-control-paper set on|off|toggle
-        hyprdot-control-paper set back|next
+Usage:  hyprdot-control-paper get status|mode
+        hyprdot-control-paper set status on|off|toggle [save] 
+        hyprdot-control-paper set mode back|next [save]
+        hyprdot-control-paper set paper {paper} [save]
+        hyprdot-control-paper set restore
 EOF
     exit 1
 }
 
 PROCESS="hyprpaper"
-WALLPAPER_PATH="$HOME/.config/hypr/papers"
-CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
-IS_ENABLED=$(hyprdot-settings read "hyprpaper.isEnabled")
+PAPERS_PATH="$HOME/.config/hypr/papers"
+PAPERS=($(ls "$PAPERS_PATH" | grep -v "current" | sort))
 
-get_status() {
-    is_process_running "$PROCESS" && echo "on" || echo "off"
+check_paper_exists() {
+    local paper="$1"
+    if [ ! -d "$PAPERS_PATH/$paper" ]; then
+        echo "Paper '$paper' not found."
+        exit 1
+    fi
 }
 
-get_wallpaper() {
-    echo $CURRENT_WALLPAPER
-}
 
-set_opacity() {
-    hyprctl keyword "decoration:fullscreen_opacity" "$1"
-    hyprctl keyword "decoration:active_opacity" "$1"
-    hyprctl keyword "decoration:inactive_opacity" "$1"
-}
-
-set_blur() {
-    hyprctl keyword "decoration:blur:enabled" "$1"
-}
-
-is_process_running() {
-    pgrep "$1" > /dev/null 2>&1
+is_enabled() {
+    pgrep "$PROCESS" > /dev/null 2>&1
     return $?
 }
 
-init() {
-    [ "$IS_ENABLED" = "true" ] && on || off
+restart() {
+    killall $PROCESS
+    $PROCESS > /dev/null 2>&1
+}
+
+refresh_symlink() {
+    local paper="$1"
+    rm -r "$PAPERS_PATH/current"
+    ln -s "$PAPERS_PATH/$paper" "$PAPERS_PATH/current"
+}
+
+restore() {
+    local status="$(load_status)"
+    local paper="$(load_mode)"
+
+    [ "$status" = "false" ] && {
+        off;
+        exit 0;
+    }
+
+    set_mode "$paper"
+}
+
+load_status() {
+    hyprdot-settings read "paper.isEnabled"
+}
+
+load_mode() {
+    hyprdot-settings read "paper.mode"
+}
+
+save_status() {
+    hyprdot-settings assign "paper.isEnabled" "$1"
+}
+
+save_mode() {
+    hyprdot-settings assign "paper.mode" "$1"
+}
+
+get_status() {
+    is_enabled
+    [ $? -eq 0 ] && echo "true" || echo "false"
+}
+
+get_mode() {
+    local current="$(basename "$(readlink -f "$PAPERS_PATH/current")")"
+    echo "$current"
+}
+
+set_mode() {
+    local paper="$1"
+
+    check_paper_exists "$paper"
+
+    waynot send "Paper" "$paper"
+    refresh_symlink "$paper"
+    restart
+
+    [ "$SAVE" -eq 1 ] && {
+        save_status "true"
+        save_mode "$paper";
+    }
 }
 
 on() {
-    hyprctl reload
-    $PROCESS &
-    hyprdot-settings assign "hyprpaper.isEnabled" "true"
-    waynot send "Paper" "${CURRENT_WALLPAPER^}"
+    set_mode "$(load_mode)"
 }
 
 off() {
-    set_opacity "1"
-    set_blur "false"
+    waynot send "Paper is off"
     killall $PROCESS
-    hyprdot-settings assign "hyprpaper.isEnabled" "false"
+
+    [ "$SAVE" -eq 1 ] && {
+        save_status "false"
+    }
 }
 
 toggle() {
-    is_process_running "$PROCESS" && off || on
+    is_enabled
+    [ $? -eq 0 ]  && off || on
+}
+
+navigate() {
+    local offset=$1
+
+    if [ ${#PAPERS[@]} -eq 0 ]; then
+        echo "No papers available."
+        exit 1
+    fi
+
+    for i in "${!PAPERS[@]}"; do
+        if [ "${PAPERS[$i]}" = "$(get_mode)" ]; then
+            local new_index=$(( (i + offset + ${#PAPERS[@]}) % ${#PAPERS[@]} ))
+            set_mode "${PAPERS[$new_index]}"
+            return
+        fi
+    done
 }
 
 back() {
-    local wallpapers=($(ls "$WALLPAPER_PATH" | grep -v "current"))
-    
-    for i in "${!wallpapers[@]}"; do
-        if [ "${wallpapers[$i]}" = "$CURRENT_WALLPAPER" ]; then
-            back_index=$(( (i + 1) % ${#wallpapers[@]} ))
-            back_wallpaper=${wallpapers[$next_index]}
-        fi
-    done
-
-    hyprdot-settings assign "hyprpaper.wallpaper" "$back_wallpaper"
-    CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
-
-    rm -r "$WALLPAPER_PATH/current"
-    ln -s "$WALLPAPER_PATH/$back_wallpaper" "$WALLPAPER_PATH/current"
-
-    off
-    on
+    is_enabled
+    [ $? -eq 0 ] && navigate "-1"
 }
 
 next() {
-    local wallpapers=($(ls "$WALLPAPER_PATH" | grep -v "current"))
-    
-    for i in "${!wallpapers[@]}"; do
-        if [ "${wallpapers[$i]}" = "$CURRENT_WALLPAPER" ]; then
-            next_index=$(( (i + 1) % ${#wallpapers[@]} ))
-            next_wallpaper=${wallpapers[$next_index]}
-        fi
-    done
-
-    hyprdot-settings assign "hyprpaper.wallpaper" "$next_wallpaper"
-    CURRENT_WALLPAPER=$(hyprdot-settings read "hyprpaper.wallpaper")
-
-    rm -r "$WALLPAPER_PATH/current"
-    ln -s "$WALLPAPER_PATH/$next_wallpaper" "$WALLPAPER_PATH/current"
-
-    off
-    on
+    is_enabled
+    [ $? -eq 0 ] && navigate "+1"
 }
+
+SAVE=0
+[ "$4" = "save" ] && SAVE=1
 
 case "$1" in
     "get")
@@ -105,8 +147,8 @@ case "$1" in
             "status")
                 get_status
                 ;;
-            "wallpaper")
-                get_wallpaper
+            "mode")
+                get_mode
                 ;;
             *)
                 usage
@@ -115,25 +157,42 @@ case "$1" in
         ;;
     "set")
         case "$2" in
-            "init")
-                init
+            "status")
+                case "$3" in
+                    "on")
+                        on
+                        ;;
+                    "off")
+                        off
+                        ;;
+                    "toggle")
+                        toggle
+                        ;;
+                    *)      
+                        usage
+                        ;;
+                esac
                 ;;
-            "on")
-                on
+            "mode")
+                case "$3" in
+                    "back")
+                        back
+                        ;;
+                    "next")
+                        next
+                        ;;
+                    *)
+                        usage
+                        ;;
+                esac
                 ;;
-            "off")
-                off
+            "paper")
+                set_mode "$3"
                 ;;
-            "toggle")
-                toggle
+            "restore")
+                restore
                 ;;
-            "back")
-                back
-                ;;
-            "next")
-                next
-                ;;
-            *)
+            *)      
                 usage
                 ;;
         esac

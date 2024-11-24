@@ -3,13 +3,19 @@
 usage() {
     cat << EOF
 Usage:  hyprdot-control-brightness all|default|{device} get level 
-        hyprdot-control-brightness all|default|{device} set increase|decrease|up|down|max|min [backup]
+        hyprdot-control-brightness all|default|{device} set increase|decrease|up|down|max|min [save]
         hyprdot-control-brightness all|default|{device} set resume
 EOF
     exit 1
 }
 
-readarray -t DEVICES <<< $(brightnessctl --list | grep 'Device' | awk -F"'" '{print $2}')
+readarray -t EXTRA_DEVICES <<< $(brightnessctl --list | grep 'Device' | awk -F"'" '{print $2}')
+
+DEVICES=(
+intel_backlight
+asus_screenpad
+asus::kbd_backlight
+)
 
 get_brightness() {
     local device="$1"
@@ -25,9 +31,8 @@ get_brightness() {
 set_brightness() {
     local device="$1"
     local value="$2"
-    local backup="$3"
 
-    [ $backup -eq 1 ] && save_brightness "$device"
+    [ $SAVE -eq 1 ] && save_brightness "$device"
 
     if [ -z "$device" ]; then
         for current in "${DEVICES[@]}"; do
@@ -66,7 +71,7 @@ request_device() {
 
     [ -z "$device" ] && usage
 
-    for current in "${DEVICES[@]}"; do
+    for current in "${EXTRA_DEVICES[@]}"; do
         [ "$current" = "$1" ] && device_found=1
     done
 
@@ -89,14 +94,8 @@ case "$1" in
         DEVICE="$1"
 esac
 
-case "$4" in
-    "backup")
-        BACKUP=1
-        ;;
-    *)
-        BACKUP=0
-        ;;
-esac
+SAVE=0
+[ "$4" = "save" ] && SAVE=1
 
 case "$2" in
     "get")
@@ -112,25 +111,25 @@ case "$2" in
     "set")
         case "$3" in
             "increase")
-                set_brightness "$DEVICE" "+5%"  "$BACKUP"
+                set_brightness  "$DEVICE" "+5%"  
                 ;;
             "decrease")
-                set_brightness "$DEVICE" "5%-"  "$BACKUP"
+                set_brightness  "$DEVICE" "5%-"  
                 ;;
             "up")
-                set_brightness "$DEVICE" "+1%"  "$BACKUP"
+                set_brightness  "$DEVICE" "+1%"  
                 ;;
             "down")
-                set_brightness "$DEVICE" "1%-"  "$BACKUP"
+                set_brightness  "$DEVICE" "1%-"  
                 ;;
             "max")
-                set_brightness "$DEVICE" "100%" "$BACKUP"
+                set_brightness  "$DEVICE" "100%" 
                 ;;
             "min")
-                set_brightness "$DEVICE" "5%"   "$BACKUP"
+                set_brightness  "$DEVICE" "5%"   
                 ;;
             "off")
-                set_brightness "$DEVICE" "0%"   "$BACKUP"
+                set_brightness  "$DEVICE" "0%"   
                 ;;
             "resume")
                 load_brightness "$DEVICE"

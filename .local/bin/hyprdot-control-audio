@@ -41,9 +41,9 @@ get_latency() {
     local buffersize=$(extract_value "$info" "api.alsa.period-size")
 
     if [ -z "$buffersize" ] || [ -z "$samplerate" ]; then 
-        echo "NaN"
+        echo "?"
     else
-        echo "scale=5; $buffersize / $samplerate * 1000" | bc | awk -F'.' '{print $1}'
+        echo "scale=5; $buffersize / $samplerate * 1000" | bc | awk '{print int($1)}'
     fi
 }
 
@@ -51,10 +51,10 @@ get_level() {
     local volume=$(wpctl get-volume "$1" | awk -F': ' '{print $2}')
 
     if echo "$volume" | grep -qi "muted"; then
-        echo "Muted"
+        printf "Muted"
     else
         volume=$(echo "$volume * 100" | bc)
-        echo "${volume%%.*}"
+        printf "%d\n" "$volume"
     fi
 }
 
